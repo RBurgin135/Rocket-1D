@@ -42,9 +42,12 @@ class Rocket:
         self.blitY = self.Y - self.image.get_height()/2
         self.width = self.image.get_width()
         self.height = self.image.get_height()
+
+        #testing values
         self.crash = False
         self.SUCCESS = False
         self.tested = False
+        self.testU = 0
 
         #mass values
         self.R_m = 10
@@ -84,12 +87,14 @@ class Rocket:
 
         #crash and success query
         if (self.Alt - self.s) <=0:
-            if (self.crash == False) and (self.u > 10):
+            if (self.crash == False) and (self.u > 25):
                 self.crash = True
                 self.tested = True
+                self.testU = self.u
             if self.crash == False and (self.blitX > P.X and (self.blitX+self.width) < (P.X+P.width)):
                 self.SUCCESS = True
                 self.tested = True
+                self.testU = self.u
             
             self.s = 0
             self.u = 0
@@ -173,17 +178,18 @@ def Background(Num):
 
 def AI(Pop):
     for i in range(0,len(Pop)):
-        result = Pop[i].Nn.Forward(Pop[i].Alt, Pop[i].u, Pop[i].a, Pop[i].fuel)
-        if result > 0.5:
-            Pop[i].Active()
+        if Pop[i].tested == False:
+            result = Pop[i].Nn.Forward(Pop[i].Alt, Pop[i].u, Pop[i].a, Pop[i].fuel)
+            if result > 0.5:
+                Pop[i].Active()
 
 def Diagnostics(Pop):
     Y = scr_height-40
     for i in range(0,len(Pop)):
+        X = 10+40*i
+        details = X, Y, 20, 20
         if Pop[i].tested == False: 
             #state indicator
-            X = 10+40*i
-            details = X, Y, 20, 20
             if Pop[i].image == Pop[i].On:
                 pygame.draw.rect(window,(237,28,36),details)
             elif Pop[i].image == Pop[i].Off:
@@ -199,6 +205,11 @@ def Diagnostics(Pop):
             #Altimeter
             details = (X-6, Y+20-Pop[i].Alt/15, 5, Pop[i].Alt/15)
             pygame.draw.rect(window,(255,255,127),details)
+        else:
+            if Pop[i].SUCCESS == True:
+                pygame.draw.rect(window,(76,166,76),details)
+            else:
+                pygame.draw.rect(window,(166,166,166),details)
 
 def GenerationMngmnt(Pop, GenNumber):
     GenTest = True
@@ -228,8 +239,6 @@ def GenerationMngmnt(Pop, GenNumber):
 
         Pop = Pop + NewRockets
     return GenNumber, Pop
-
-
 
 G = Ground()
 P = Pad()

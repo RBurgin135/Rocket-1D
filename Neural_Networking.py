@@ -18,9 +18,11 @@ class NeuralNet:
         #Hidden
         self.H1 = Neuron(4)
         self.H2 = Neuron(4)
+        self.H3 = Neuron(4)
+        self.H4 = Neuron(4)
 
         #Outputs
-        self.Thrust = Neuron(2)
+        self.Thrust = Neuron(4)
 
         #Score
         self.score = 0
@@ -37,20 +39,20 @@ class NeuralNet:
         HiddenInputs = [a,b,c,d]
         e = self.H1.ActivationFunction(HiddenInputs)
         f = self.H2.ActivationFunction(HiddenInputs)
+        g = self.H3.ActivationFunction(HiddenInputs)
+        h = self.H4.ActivationFunction(HiddenInputs)
 
         #Output
-        return self.Thrust.ActivationFunction([e,f])
+        return self.Thrust.ActivationFunction([e,f,g,h])
 
     def Scoring(self, Velo, Fuel, success):
-        Score_V = Velo * (10^-2)
-        Score_F = Fuel  * 10
+        Score_V = -Velo *10
+        Score_F = Fuel
         Score_S = 0
         if success == True:
-            Score_S = 1 * 10^3
+            Score_S = 10000
 
-        self.score = Score_S + Score_F + Score_V
-
-        return self.score   
+        self.score = Score_S  + Score_V + Score_F
 
 #=======
 class Neuron:
@@ -62,8 +64,12 @@ class Neuron:
 
     def ActivationFunction(self, Input):
         total = sum(numpy.multiply(Input,self.weight))
-        return (self.step(total)+ self.bias)
-    
+        return (self.ReLU(total)+ self.bias)
+
+    def ReLU(self, x):
+        result = max(x, 0)
+        return result
+
     def sigmoid(self, x):
         result = 1/(1+math.exp(-x))
         return result
@@ -81,12 +87,12 @@ def Review(Pop):
     NewNetlist = []
     for i in range(0,len(Pop)):
         Netlist.append(Pop[i].Nn) 
-        Netlist[len(Netlist)-1].Scoring(Pop[i].u, Pop[i].fuel, Pop[i].SUCCESS)
+        Netlist[len(Netlist)-1].Scoring(Pop[i].testU, Pop[i].fuel, Pop[i].SUCCESS)
     
     Netlist = Sort(Netlist)
     
     #clone
-    for i in range(0,3):
+    for i in range(0,int(len(Pop)//6)):
         result = clone(Netlist[0])
         NewNetlist.append(result)
         Netlist.pop(0)
@@ -139,6 +145,12 @@ def Mutate(Net):
     for i in range(0,len(Net.H2.weight)):
         Net.H2.weight[i] += random.uniform(-fence,fence)
     Net.H2.bias += random.uniform(-fence,fence)
+    for i in range(0,len(Net.H3.weight)):
+        Net.H3.weight[i] += random.uniform(-fence,fence)
+    Net.H3.bias += random.uniform(-fence,fence)
+    for i in range(0,len(Net.H4.weight)):
+        Net.H4.weight[i] += random.uniform(-fence,fence)
+    Net.H4.bias += random.uniform(-fence,fence) 
 
     #Outputs
     for i in range(0,len(Net.Thrust.weight)):
