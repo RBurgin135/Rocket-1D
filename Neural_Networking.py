@@ -42,7 +42,6 @@ class NeuralNet:
         return self.Thrust.ActivationFunction([e,f])
 
     def Scoring(self, Velo, Fuel, success):
-        print(Velo)
         Score_V = Velo * (10^-2)
         Score_F = Fuel  * 10
         Score_S = 0
@@ -53,6 +52,7 @@ class NeuralNet:
 
         return self.score   
 
+#=======
 class Neuron:
     def __init__(self, num_inputs):
         self.bias = 0
@@ -91,44 +91,62 @@ def Review(Pop):
         NewNetlist.append(result)
         Netlist.pop(0)
 
-    #breed
-    #Breedlist = []
-    #for i in range(0,7):
-    #    Breedlist.append(Netlist[0])
-    #    Netlist.pop(0)
-
-    #Resultlist = breed(Breedlist)
-   # NewNetlist = NewNetlist + Resultlist
 
     #mutate
     Mutatelist = []
-    for i in range(0,len(NewNetlist)):
-        if random.random()> 0.5:
-            Mutatelist.append(mutate(NewNetlist[i]))
-    NewNetlist = Mutatelist
+    for i in range(0,int(len(Netlist)/2)):
+        result = Netlist[i]
+        if random.uniform(0,1)> 0.5:
+            result = Mutate(Netlist[i])
+        Mutatelist.append(result)
+
     #The rest of Netlist are removed
+    NewNetlist = NewNetlist + Mutatelist
 
     return NewNetlist
 
 def Sort(List):
-    pass
+    #Bubble sort
+    Sorted = False
+    while Sorted == False:
+        Sorted = True
+        for i in range(0, len(List)-1):
+            if List[i].score < List[i+1].score:
+                Sorted = False
+                Buffer = List[i]
+                List[i] = List[i+1]
+                List[i+1] = Buffer
+    
+    return List
 
-#def breed(Best):
-
-def mutate(Net):
+def Mutate(Net):
     #change the weights and biases a very small amount
-    Neurons = ["Altitude", "Velocity", "Acceleration", "Fuel", "H1", "H2", "Thrust"]
+    fence = 0.05
+    #Inputs
+    Net.Altitude.weight[0] += random.uniform(-fence,fence)
+    Net.Altitude.bias += random.uniform(-fence,fence)
+    Net.Velocity.weight[0] += random.uniform(-fence,fence)
+    Net.Velocity.bias += random.uniform(-fence,fence)
+    Net.Acceleration.weight[0] += random.uniform(-fence,fence)
+    Net.Acceleration.bias += random.uniform(-fence,fence)
+    Net.Fuel.weight[0] += random.uniform(-fence,fence)
+    Net.Fuel.bias += random.uniform(-fence,fence)
 
-    print("ya")
-    for x in range(0, len(Neurons)):
-        for y in range(0, len(Net.Neuron[x].weight)):
-            Net.Neuron[x].weight[y] += 0.01
-        Net.Neuron[x].bias += 0.01
+    #Hidden
+    for i in range(0,len(Net.H1.weight)):
+        Net.H1.weight[i] += random.uniform(-fence,fence)
+    Net.H1.bias += random.uniform(-fence,fence)
+    for i in range(0,len(Net.H2.weight)):
+        Net.H2.weight[i] += random.uniform(-fence,fence)
+    Net.H2.bias += random.uniform(-fence,fence)
 
-    return result
+    #Outputs
+    for i in range(0,len(Net.Thrust.weight)):
+        Net.Thrust.weight[i] += random.uniform(-fence,fence)
+    Net.Thrust.bias += random.uniform(-fence,fence)
+
+    return Net
 
 def clone(TopPerformer):
-    #take the top performers and take a copy to be used in the next generation
-    #so there is no lost potential
     result = TopPerformer
     return result

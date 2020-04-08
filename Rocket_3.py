@@ -1,6 +1,8 @@
 #Rocket that lands itself
 global g
 g = 1
+global PopSize
+PopSize = 20
 import pygame
 from pygame import FULLSCREEN
 import random
@@ -19,7 +21,7 @@ scr_height = user32.GetSystemMetrics(1)
 window = pygame.display.set_mode((scr_width,scr_height),FULLSCREEN)
 pygame.display.set_caption("Rocket 3.0")
 
-
+#Objects====
 #======
 class Rocket:
     def __init__(self, Alt, Overide):
@@ -41,9 +43,8 @@ class Rocket:
         self.width = self.image.get_width()
         self.height = self.image.get_height()
         self.crash = False
-        self.active = False
         self.SUCCESS = False
-        
+        self.tested = False
 
         #mass values
         self.R_m = 10
@@ -63,7 +64,6 @@ class Rocket:
             self.thrust = -25
             self.fuel -=1
             self.image = self.On
-            self.active = True
         else:
             self.image = self.Broken
            
@@ -86,8 +86,10 @@ class Rocket:
         if (self.Alt - self.s) <=0:
             if (self.crash == False) and (self.u > 10):
                 self.crash = True
+                self.tested = True
             if self.crash == False and (self.blitX > P.X and (self.blitX+self.width) < (P.X+P.width)):
                 self.SUCCESS = True
+                self.tested = True
             
             self.s = 0
             self.u = 0
@@ -106,9 +108,7 @@ class Rocket:
         #reset values
         self.thrust = 0
         self.image = self.Off
-    
-
-        
+           
 #======
 class Ground:
     def __init__(self):
@@ -145,6 +145,7 @@ class Pad:
         Text = SubFont.render(self.text, False, (255,255,255))
         window.blit(Text,(self.X+60,self.Y+2))
 
+#Functions====
 def Input(Pop):
     keys = pygame.key.get_pressed()
     for event in pygame.event.get():
@@ -154,7 +155,8 @@ def Input(Pop):
         for i in range(0,len(Pop)):
             Pop[i].Active()
         
-def Background():
+def Background(Num):
+    #Stars
     Star = pygame.image.load("Star.png")
     window.fill((0,0,0))
     for x in range(0,50):
@@ -163,6 +165,11 @@ def Background():
                 window.blit(Star,(G.X+200+200* x, G.Y-50-200*y))
             else:
                 window.blit(Star,(G.X+350+200* x, G.Y-50-200*y))
+    
+    #Gen number
+    SubFont = pygame.font.SysFont('', 100)
+    Text = SubFont.render("GEN "+str(Num), False, (255,255,255))
+    window.blit(Text,(0,0))
 
 def AI(Pop):
     for i in range(0,len(Pop)):
@@ -173,35 +180,40 @@ def AI(Pop):
 def Diagnostics(Pop):
     Y = scr_height-40
     for i in range(0,len(Pop)):
-        #state indicator
-        X = 10+40*i
-        details = X, Y, 20, 20
-        if Pop[i].image == Pop[i].On:
-            pygame.draw.rect(window,(237,28,36),details)
-        elif Pop[i].image == Pop[i].Off:
-            pygame.draw.rect(window,(153,217,234),details)
-        else:
-            pygame.draw.rect(window,(255,127,39),details)
-         
-        #fuel gauge
-        if Pop[i].fuel > 0:
-            details = (X, Y+21, Pop[i].fuel/4, 5)
-            pygame.draw.rect(window,(255,127,39),details)
-def GenNo(Num):
-    SubFont = pygame.font.SysFont('', 100)
-    Text = SubFont.render("GEN "+str(Num), False, (255,255,255))
-    window.blit(Text,(0,0))
+        if Pop[i].tested == False: 
+            #state indicator
+            X = 10+40*i
+            details = X, Y, 20, 20
+            if Pop[i].image == Pop[i].On:
+                pygame.draw.rect(window,(237,28,36),details)
+            elif Pop[i].image == Pop[i].Off:
+                pygame.draw.rect(window,(153,217,234),details)
+            else:
+                pygame.draw.rect(window,(255,127,39),details)
+            
+            #fuel gauge
+            if Pop[i].fuel > 0:
+                details = (X, Y+21, Pop[i].fuel/4, 5)
+                pygame.draw.rect(window,(255,127,39),details)
+
+            #Altimeter
+            details = (X-6, Y+20-Pop[i].Alt/15, 5, Pop[i].Alt/15)
+            pygame.draw.rect(window,(255,255,127),details)
 
 def GenerationMngmnt(Pop, GenNumber):
     GenTest = True
-    for i in range(0, len(Pop)):
-        if Pop[i].crash == False and Pop[i].SUCCESS == False:
+    for i in range(0, PopSize):
+        #if Pop[i].crash == False and Pop[i].SUCCESS == False:
+        if Pop[i].tested == False:
             GenTest = False
+
     if GenTest == True:
+        #Prep for next Gen
         time.sleep(0.5)
         GenNumber += 1
         
         NewNets = Networking.Review(Pop)
+
 
         #new gen
         StartAltitude = random.randint(2500,5000)
@@ -210,10 +222,12 @@ def GenerationMngmnt(Pop, GenNumber):
             Pop[i].__init__(StartAltitude, True)
 
         NewRockets = []
-        for i in range(0, len(Pop) - len(NewNets)):
+        for i in range(0, PopSize - len(NewNets)):
             NewRockets.append(Rocket(StartAltitude, False))
             Pop.pop(len(NewNets))
-    return GenNumber
+
+        Pop = Pop + NewRockets
+    return GenNumber, Pop
 
 
 
@@ -221,7 +235,7 @@ G = Ground()
 P = Pad()
 Pop = []
 StartAltitude = random.randint(2500,5000)
-for i in range(0,20):
+for i in range(0,PopSize):
     Pop.append(Rocket(StartAltitude, False))
 GenNumber = 1
 
@@ -231,22 +245,21 @@ while RUN:
     Input(Pop)
     AI(Pop)         
 
-    Background()
+    Background(GenNumber)
 
-    for i in range(0,len(Pop)):
+    for i in range(0,PopSize):
         Pop[i].Calculate()
 
-    GenNo(GenNumber)
     G.Show()
     P.Show()
     Diagnostics(Pop)
 
     pygame.display.update()
-    for i in range(0, len(Pop)):
+    for i in range(0, PopSize):
         Pop[i].Reset()
     
     #generation managment
-    GenNumber = GenerationMngmnt(Pop, GenNumber)
+    GenNumber, Pop = GenerationMngmnt(Pop, GenNumber)
 pygame.quit()
 
         
