@@ -2,7 +2,7 @@
 global g
 g = 1
 global PopSize
-PopSize = 20
+PopSize = 200
 import pygame
 from pygame import FULLSCREEN
 import random
@@ -86,7 +86,7 @@ class Rocket:
         self.s = self.u - 0.5*self.a
 
         #crash and success query
-        if (self.Alt - self.s) <=0:
+        if (self.Alt - self.s) <= 0:
             if (self.crash == False) and (self.u > 25):
                 self.crash = True
                 self.tested = True
@@ -179,8 +179,9 @@ def Background(Num):
 def AI(Pop):
     for i in range(0,len(Pop)):
         if Pop[i].tested == False:
-            result = Pop[i].Nn.Forward(Pop[i].Alt, Pop[i].u, Pop[i].a, Pop[i].fuel)
-            if result > 0.5:
+            Inputs = [Pop[i].Alt, Pop[i].a,  Pop[i].u, Pop[i].fuel]
+            result = Pop[i].Nn.Forward(Inputs)
+            if result[0] > 0.4:
                 Pop[i].Active()
 
 def Diagnostics(Pop):
@@ -214,7 +215,6 @@ def Diagnostics(Pop):
 def GenerationMngmnt(Pop, GenNumber):
     GenTest = True
     for i in range(0, PopSize):
-        #if Pop[i].crash == False and Pop[i].SUCCESS == False:
         if Pop[i].tested == False:
             GenTest = False
 
@@ -225,20 +225,45 @@ def GenerationMngmnt(Pop, GenNumber):
         
         NewNets = Networking.Review(Pop)
 
-
-        #new gen
+        #new gen reset rockets
         StartAltitude = random.randint(2500,5000)
         for i in range(0,len(NewNets)):
             Pop[i].Nn = NewNets[i]
             Pop[i].__init__(StartAltitude, True)
 
-        NewRockets = []
-        for i in range(0, PopSize - len(NewNets)):
-            NewRockets.append(Rocket(StartAltitude, False))
-            Pop.pop(len(NewNets))
-
-        Pop = Pop + NewRockets
     return GenNumber, Pop
+
+def NNDiag(Pop):
+    Net = Pop[0].Nn
+    Layers = [Net.InputLayer, Net.HiddenLayer, Net.OutputLayer]
+    ICenters = []
+    HCenters = []
+    OCenters = []
+
+    #draws circles
+    for x in range(0, 3):
+        for y in range(0, len(Layers[x])):
+            pygame.draw.circle(window, (166,166,166), (1200+200*x,50+y*70), 30, 0)
+            if x == 0:
+                ICenters.append((1200+200*x,50+y*70))
+            elif x == 1:
+                HCenters.append((1200+200*x,50+y*70))
+            elif x == 2:
+                OCenters.append((1200+200*x,50+y*70))
+
+    #draws lines
+    CombinedCenters = [ICenters,HCenters,OCenters]
+    for L in range(0,len(CombinedCenters)-1):
+        for O in range(0, len(CombinedCenters[L])):
+            for D in range(0, len(CombinedCenters[L+1])):
+                if Layers[L+1][D].weight[O] > 0:
+                    colour = (173,216,230)
+                else:
+                    colour = (128,0,0)
+                width = int(round(abs(Layers[L+1][D].weight[O])*5))
+                if width == 0:
+                    width = 1
+                pygame.draw.line(window, colour, CombinedCenters[L][O], CombinedCenters[L+1][D], width)
 
 G = Ground()
 P = Pad()
@@ -250,7 +275,7 @@ GenNumber = 1
 
 RUN = True
 while RUN:
-    pygame.time.delay(10)
+    pygame.time.delay(1)
     Input(Pop)
     AI(Pop)         
 
@@ -262,6 +287,7 @@ while RUN:
     G.Show()
     P.Show()
     Diagnostics(Pop)
+    NNDiag(Pop)
 
     pygame.display.update()
     for i in range(0, PopSize):
