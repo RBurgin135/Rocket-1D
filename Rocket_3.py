@@ -35,6 +35,9 @@ class Rocket:
         self.On = pygame.image.load("Rocket on.png")
         self.Off = pygame.image.load("Rocket off.png")
         self.Broken = pygame.image.load("Rocket no-fuel.png")
+        self.explode = pygame.image.load("Rocket explode.png")
+        self.rubble = pygame.image.load("Rocket rubble.png")
+        self.delay = 0
         self.image = self.Off
         self.X = (scr_width/2)
         self.Y = G.Y - self.Alt - self.image.get_height()/2
@@ -42,6 +45,7 @@ class Rocket:
         self.blitY = self.Y - self.image.get_height()/2
         self.width = self.image.get_width()
         self.height = self.image.get_height()
+        
 
         #testing values
         self.crash = False
@@ -91,6 +95,7 @@ class Rocket:
                 self.crash = True
                 self.tested = True
                 self.testU = self.u
+                self.image = self.explode
             if self.crash == False and (self.blitX > P.X and (self.blitX+self.width) < (P.X+P.width)):
                 self.SUCCESS = True
                 self.tested = True
@@ -112,8 +117,14 @@ class Rocket:
 
         #reset values
         self.thrust = 0
-        self.image = self.Off
-           
+        if self.image == self.explode:
+            self.delay += 1
+            if self.delay == 10:
+                self.image = self.rubble
+        elif self.image == self.rubble:
+            pass
+        else:
+            self.image = self.Off
 #======
 class Ground:
     def __init__(self):
@@ -199,13 +210,13 @@ def Diagnostics(Pop):
                 pygame.draw.rect(window,(255,127,39),details)
             
             #fuel gauge
-            if Pop[i].fuel > 0:
-                details = (X, Y+21, Pop[i].fuel/4, 5)
-                pygame.draw.rect(window,(255,127,39),details)
+            #if Pop[i].fuel > 0:
+            #    details = (X, Y+21, Pop[i].fuel/4, 5)
+            #    pygame.draw.rect(window,(255,127,39),details)
 
             #Altimeter
-            details = (X-6, Y+20-Pop[i].Alt/15, 5, Pop[i].Alt/15)
-            pygame.draw.rect(window,(255,255,127),details)
+            #details = (X-6, Y+20-Pop[i].Alt/15, 5, Pop[i].Alt/15)
+            #pygame.draw.rect(window,(255,255,127),details)
         else:
             if Pop[i].SUCCESS == True:
                 pygame.draw.rect(window,(76,166,76),details)
@@ -235,14 +246,13 @@ def GenerationMngmnt(Pop, GenNumber):
 
 def NNDiag(Pop):
     Net = Pop[0].Nn
-    Layers = [Net.InputLayer, Net.HiddenLayer, Net.OutputLayer]
     ICenters = []
     HCenters = []
     OCenters = []
 
     #draws circles
     for x in range(0, 3):
-        for y in range(0, len(Layers[x])):
+        for y in range(0, len(Net.Layers[x])):
             pygame.draw.circle(window, (166,166,166), (1200+200*x,50+y*70), 30, 0)
             if x == 0:
                 ICenters.append((1200+200*x,50+y*70))
@@ -256,14 +266,38 @@ def NNDiag(Pop):
     for L in range(0,len(CombinedCenters)-1):
         for O in range(0, len(CombinedCenters[L])):
             for D in range(0, len(CombinedCenters[L+1])):
-                if Layers[L+1][D].weight[O] > 0:
+                if Net.Layers[L+1][D].weight[O] > 0:
                     colour = (173,216,230)
                 else:
                     colour = (128,0,0)
-                width = int(round(abs(Layers[L+1][D].weight[O])*5))
+                width = int(round(abs(Net.Layers[L+1][D].weight[O])*5))
                 if width == 0:
                     width = 1
                 pygame.draw.line(window, colour, CombinedCenters[L][O], CombinedCenters[L+1][D], width)
+
+def Control(Pop, GenNumber):
+    #end button
+    details = scr_width-50, 0, 50, 50
+    pygame.draw.rect(window,(255,0,0),details)
+    #load button
+    details = scr_width-100, 0, 50, 50
+    pygame.draw.rect(window,(0,0,255),details)
+    #save button
+    details = scr_width-150, 0, 50, 50
+    pygame.draw.rect(window,(0,255,0),details)
+
+    RUN = True
+    for event in pygame.event.get():
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            Mx, My = pygame.mouse.get_pos()
+            if Mx > scr_width-50 and Mx < scr_width and My < 50:
+                RUN = False
+            if Mx > scr_width-100 and Mx < scr_width-50 and My < 50:
+                Pop, GenNumber = Networking.Read(Pop)
+            if Mx > scr_width-150 and Mx < scr_width-100 and My < 50:
+                Networking.Write(GenNumber, Pop)
+    return RUN, Pop, GenNumber
+
 
 G = Ground()
 P = Pad()
@@ -287,7 +321,8 @@ while RUN:
     G.Show()
     P.Show()
     Diagnostics(Pop)
-    NNDiag(Pop)
+    #NNDiag(Pop)
+    RUN, Pop, GenNumber = Control(Pop, GenNumber)
 
     pygame.display.update()
     for i in range(0, PopSize):
@@ -295,6 +330,7 @@ while RUN:
     
     #generation managment
     GenNumber, Pop = GenerationMngmnt(Pop, GenNumber)
+
 pygame.quit()
 
         
